@@ -1,50 +1,50 @@
 buildscript {
     ext {
-        kotlinVersion = '1.2.50'
-        springBootVersion = '2.0.3.RELEASE'
+        kotlinVersion = '1.3.11'
+        springBootVersion = '2.1.1.RELEASE'
+        dokkaVersion = "0.9.17"
     }
     repositories {
-        maven {
-            url 'http://nexus.now.ov.otto.de/repository/maven-public/'
-        }
+        mavenCentral()
+        jcenter()
     }
     dependencies {
-        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:$dokkaVersion"
     }
 }
 
-def getVersionName = { ->
-    def stdout = new ByteArrayOutputStream()
-    exec {
-        commandLine 'git', 'describe', '--tags'
-        standardOutput = stdout
-    }
-    return stdout.toString().trim()
+plugins {
+    // Use task dependencyUpdates to check for updates
+    id "com.github.ben-manes.versions" version "0.20.0"
 }
 
-group 'de.ottonow'
-version getVersionName()
-
-apply plugin: 'kotlin'
+apply plugin: "kotlin"
 apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+group = 'de.ottonow'
+archivesBaseName = 'track-scheduled-tasks'
+version = '0.1.0'
 
 repositories {
-    maven {
-        url 'http://nexus.now.ov.otto.de/repository/maven-public/'
-    }
+    mavenCentral()
+    jcenter()
 }
 
 dependencies {
-    compile "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
-    compile "org.springframework.boot:spring-boot-starter-aop:$springBootVersion"
+    compileOnly "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
 
+    compile "org.springframework.boot:spring-boot-starter-aop:$springBootVersion"
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
+
+    testCompile "org.springframework.boot:spring-boot-starter-aop:$springBootVersion"
     testCompile "org.springframework.boot:spring-boot-starter-test:$springBootVersion"
 }
 
 sourceCompatibility = 1.8
+
 compileKotlin {
     kotlinOptions {
         jvmTarget = "1.8"
@@ -56,8 +56,12 @@ compileTestKotlin {
     }
 }
 
-task sourceJar(type: Jar) {
+task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: project.javadoc) {
+    from javadoc.destinationDir
 }
 
 publishing {
@@ -65,18 +69,52 @@ publishing {
         mavenJava(MavenPublication) {
             from components.java
 
-            artifact sourceJar {
+            artifact sourcesJar {
                 classifier "sources"
             }
+            artifact javadocJar {
+                classifier "javadoc"
+            }
+
+            pom {
+                name = 'track-scheduled-tasks'
+                description = 'Library to track scheduled tasks in a Spring Boot 2 Application'
+                url = 'https://github.com/ottonow/track-scheduled-tasks'
+                licenses {
+                    license {
+                        name = 'Apache License 2.0'
+                        url = 'https://github.com/ottonow/track-scheduled-tasks/blob/master/LICENSE'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/ottonow/track-scheduled-tasks'
+                    connection = 'scm:https://github.com/ottonow/track-scheduled-tasks.git'
+                    developerConnection = 'scm:git://github.com/ottonow/track-scheduled-tasks.git'
+                }
+                developers {
+                    developer {
+                        id = 'kevcodez'
+                        name = 'Kevin Grüneberg'
+                        email = 'k.grueneberg1994@gmail.com'
+                    }
+                }
+            }
+
+
         }
     }
+
     repositories {
         maven {
-            url 'http://nexus.now.ov.otto.de/repository/maven-releases/'
+            url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
             credentials {
-                username = "admin"
-                password = "0tt0n0w"
+                username nexusUsername
+                password nexusPassword
             }
         }
     }
+}
+
+signing {
+    sign publishing.publications.mavenJava
 }
