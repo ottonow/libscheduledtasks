@@ -3,13 +3,9 @@ package de.ottonow.scheduledtasks.tracking
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.stereotype.Controller
-import org.springframework.web.bind.annotation.CrossOrigin
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.*
 
-@Controller
+@RestController
 @RequestMapping("\${tracking.scheduled-jobs.path:/scheduled-jobs}")
 @CrossOrigin
 open class ScheduledJobController @Autowired constructor(
@@ -17,15 +13,13 @@ open class ScheduledJobController @Autowired constructor(
 ) {
 
     @RequestMapping(method = [RequestMethod.GET])
-    open fun getScheduledJobs(): ResponseEntity<Any> {
-        val scheduledJobs = scheduledJobTracker.trackedJobs
-        return ResponseEntity.ok(scheduledJobs)
+    open fun getScheduledJobs(): Set<TrackedScheduledJob> {
+        return scheduledJobTracker.trackedJobs
     }
 
     @RequestMapping(value = ["{className}"], method = [RequestMethod.GET])
-    open fun getScheduledJobsPerClass(@PathVariable(name = "className") className: String): ResponseEntity<Any> {
-        val scheduledJobs = scheduledJobTracker.findJobsByClass(className)
-        return ResponseEntity.ok(scheduledJobs)
+    open fun getScheduledJobsPerClass(@PathVariable(name = "className") className: String): List<TrackedScheduledJob> {
+        return scheduledJobTracker.findJobsByClass(className)
     }
 
     @RequestMapping(value = ["{className}/{methodName}"], method = [RequestMethod.GET])
@@ -60,13 +54,12 @@ open class ScheduledJobController @Autowired constructor(
     open fun triggerJob(
         @PathVariable(name = "className") className: String,
         @PathVariable(name = "methodName") methodName: String
-    ): ResponseEntity<Any> {
-        val successful = scheduledJobTracker.triggerJob(className, methodName)
-
-        if (successful)
-            return ResponseEntity(HttpStatus.OK)
-        else
-            return ResponseEntity(HttpStatus.BAD_REQUEST)
+    ) {
+        try {
+            scheduledJobTracker.triggerJob(className, methodName)
+        } catch (exc: Exception) {
+            // Don't care if job fails, since fails are visible aswell
+        }
     }
 
 }

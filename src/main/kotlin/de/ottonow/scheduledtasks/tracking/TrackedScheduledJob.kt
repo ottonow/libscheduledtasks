@@ -2,6 +2,8 @@ package de.ottonow.scheduledtasks.tracking
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.time.Duration
 import java.time.Instant
 import java.util.*
@@ -30,17 +32,31 @@ data class TrackedScheduledJob(
 
         val index = runs.indexOf(run)
         runs.remove(run)
-        runs.add(index, run.copy(endedAt = endedAt, exception = exception))
+
+        val exceptionInfo = buildExceptionInfo(exception)
+        runs.add(index, run.copy(endedAt = endedAt, exception = exceptionInfo))
 
         if (exception != null)
             stats.numberOfExceptions++
 
         val durationInMillis = Duration.between(run.startedAt, endedAt).toMillis()
         stats.totalTimeInMs += durationInMillis
+
         if (stats.shortestRunDurationInMs == null || durationInMillis < stats.shortestRunDurationInMs!!)
             stats.shortestRunDurationInMs = durationInMillis
+
         if (stats.longestRunDurationInMs == null || durationInMillis > stats.longestRunDurationInMs!!)
             stats.longestRunDurationInMs = durationInMillis
+    }
+
+    private fun buildExceptionInfo(exception: Throwable?): ExceptionInfo? {
+        if (exception == null)
+            return null
+
+        val stringWriter = StringWriter()
+        exception.printStackTrace(PrintWriter(stringWriter))
+
+        return ExceptionInfo(exception.message ?: "null", stringWriter.toString())
     }
 
     @JsonProperty
@@ -61,13 +77,13 @@ data class TrackedScheduledJob(
 }
 
 data class Settings(
-    val cron: String?,
-    val fixedRate: Long?,
-    val fixedRateString: String?,
-    val initialDelay: Long?,
-    val initialDelayString: String?,
-    val fixedDelay: Long?,
-    val fixedDelayString: String?
+    val cron: String? = null,
+    val fixedRate: Long? = null,
+    val fixedRateString: String? = null,
+    val initialDelay: Long? = null,
+    val initialDelayString: String? = null,
+    val fixedDelay: Long? = null,
+    val fixedDelayString: String? = null
 )
 
 data class Stats(

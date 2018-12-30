@@ -11,7 +11,7 @@ data class ScheduledJobRun(
     val uuid: UUID,
     val startedAt: Instant,
     val endedAt: Instant? = null,
-    val exception: Throwable? = null
+    val exception: ExceptionInfo? = null
 ) {
 
     @JsonProperty
@@ -23,3 +23,8 @@ data class ScheduledJobRun(
     }
 
 }
+
+data class ExceptionInfo(
+    val message: String,
+    val stacktrace: String
+)
